@@ -1,0 +1,15 @@
+# Skip everything not needed for production
+.git
+.gitignore
+.dockerignore
+README.md
+node_modules/
+npm-debug.log
+.env
+.kube/
+terraform/
+*.md
+*.yml
+*.yaml
+# Only include source + build output
+!build/

@@ -1,0 +1,15 @@
+# pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: trend-app-pod
+  labels:
+    app: trend-app
+spec:
+  containers:
+    - name: nginx
+      image: saidoc540/trend-app:latest
+      ports:
+        - containerPort: 3000
+      imagePullPolicy: Always
+  restartPolicy: Always
