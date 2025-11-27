@@ -21,6 +21,13 @@ pipeline {
                 sh 'npm run build'
             }
         }
+   
+        stage('Build React App') {
+    steps {
+        sh 'npm install'   // ← Replace "npm ci" with "npm install"
+        sh 'npm run build'
+            }
+        }
 
         stage('Build & Push Docker Image') {
             steps {
