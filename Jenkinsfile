@@ -27,9 +27,7 @@ pipeline {
             steps {
                 sh '''
                     # Install kubectl
-                    sudo curl --silent --location -o /usr/local/bin/kubectl \
-  "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
-  && sudo chmod +x /usr/local/bin/kubectl
+                       curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
                     # Configure AWS CLI & kubectl
                     aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
                     aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
