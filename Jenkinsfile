@@ -2,60 +2,57 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_USER = "saidoc540"
-        GIT_USER = "Bhuvisai22"
-        IMAGE_NAME = "trend-app"   // change if needed
+        DOCKERHUB_CREDS = credentials('saidoc540')
+        AWS_ACCESS_KEY_ID = credentials('aws-access-key')
+        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-key')
+        IMAGE_TAG = "${DOCKERHUB_CREDS_USR}/trend-app:${BUILD_NUMBER}"
     }
 
     stages {
+               
 
-        stage('Checkout Code') {
-            steps {
-                git branch: 'main',
-                    credentialsId: 'github-creds',
-                    url: "https://github.com/${Bhuvisai22}/${trend-app}.git"
-            }
-        }
-
-        stage('Build Docker Image') {
+              
+        stage('Build & Push Docker Image') {
             steps {
                 script {
-                    dockerImage = docker.build("${DOCKERHUB_USER}/${IMAGE_NAME}:${env.BUILD_NUMBER}")
+                    docker.build(IMAGE_TAG, ".")
+                    docker.withRegistry('https://registry.hub.docker.com', 'saidoc540') {
+                        docker.image(IMAGE_TAG).push()
+                    }
                 }
             }
         }
 
-        stage('Login to Docker Hub') {
+        stage('Deploy to EKS') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
-                    sh "echo $PASSWORD | docker login -u $USERNAME --password-stdin"
-                }
-            }
-        }
+                sh '''
+                    # Install kubectl
+                    curl -o kubectl https://s3.us-west-2.amazonaws.com/amazon-eks/1.28.9/2024-05-28/bin/linux/amd64/kubectl
+                    chmod +x kubectl
+                    sudo mv kubectl /usr/local/bin/
 
-        stage('Push Image to Docker Hub') {
-            steps {
-                script {
-                    dockerImage.push()
-                }
-            }
-        }
+                    # Configure AWS CLI & kubectl
+                    aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+                    aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+                    aws configure set region ap-south-1
+                    aws eks update-kubeconfig --name trend-app-eks --region ap-south-1
 
-        stage('Deploy Container') {
-            steps {
-                sh """
-                    docker rm -f ${IMAGE_NAME} || true
-                    docker pull ${DOCKERHUB_USER}/${IMAGE_NAME}:${BUILD_NUMBER}
-                    docker run -d --name ${IMAGE_NAME} -p 8080:8080 ${DOCKERHUB_USER}/${IMAGE_NAME}:${BUILD_NUMBER}
-                """
+                    # Update image in deployment
+                    kubectl set image deployment/trend-app nginx='$IMAGE_TAG'
+
+                    # Wait for rollout
+                    kubectl rollout status deployment/trend-app --timeout=120s
+                '''
             }
         }
     }
 
     post {
-        always {
-            sh 'docker logout'
-            cleanWs()
+        success {
+            echo "✅ Deployment successful! App is live."
+        }
+        failure {
+            echo "❌ Pipeline failed."
         }
     }
 }
