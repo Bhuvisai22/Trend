@@ -1,12 +1,12 @@
 pipeline {
-    agent { label 'linux' }
+    agent any   // Jenkins self agent
 
     environment {
         GITHUB_REPO = "https://github.com/Bhuvisai22/Trend.git"
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')   // ← Jenkins Credentials ID
-        DOCKERHUB_USERNAME = "saidoc540"                         // ← Your DockerHub Username
-        IMAGE_NAME = "trend-app"                                 // image name
-        AWS_DEFAULT_REGION = "ap-south-1"                        // change if needed
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')   // Jenkins Credentials ID
+        DOCKERHUB_USERNAME = "saidoc540"                         // Your DockerHub Username
+        IMAGE_NAME = "trend-app"
+        AWS_DEFAULT_REGION = "ap-south-1"
     }
 
     stages {
@@ -23,7 +23,7 @@ pipeline {
                 script {
                     echo "Building Docker image..."
                     sh """
-                    docker build -t ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest .
+                        docker build -t ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest .
                     """
                 }
             }
@@ -33,7 +33,7 @@ pipeline {
             steps {
                 script {
                     sh """
-                    echo "${DOCKERHUB_CREDENTIALS_PSW}" | docker login -u "${DOCKERHUB_CREDENTIALS_USR}" --password-stdin
+                        echo "${DOCKERHUB_CREDENTIALS_PSW}" | docker login -u "${DOCKERHUB_CREDENTIALS_USR}" --password-stdin
                     """
                 }
             }
@@ -44,7 +44,7 @@ pipeline {
                 script {
                     echo "Pushing Docker image to DockerHub..."
                     sh """
-                    docker push ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest
+                        docker push ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest
                     """
                 }
             }
@@ -56,11 +56,11 @@ pipeline {
                     echo "Deploying to AWS EKS..."
                     
                     sh """
-                    aws eks update-kubeconfig --name trend-cluster --region ${AWS_DEFAULT_REGION}
+                        aws eks update-kubeconfig --name trend-cluster --region ${AWS_DEFAULT_REGION}
 
-                    kubectl set image deployment/trend-deployment trend-container=${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest
+                        kubectl set image deployment/trend-deployment trend-container=${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest
 
-                    kubectl rollout status deployment/trend-deployment
+                        kubectl rollout status deployment/trend-deployment
                     """
                 }
             }
@@ -70,7 +70,7 @@ pipeline {
 
     post {
         success {
-            echo "Pipeline executed successfully!"
+            echo "Pipeline executed successfully! 🚀"
         }
         failure {
             echo "Pipeline failed ❌"
