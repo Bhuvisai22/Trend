@@ -2,27 +2,27 @@ pipeline {
     agent any
 
     environment {
-        GITHUB_CRED   = credentials('github-token')        
-        DOCKER_CRED   = credentials('Dockerhub-token')      
-        DOCKER_REPO   = "saidoc540/trend"                  
+        GIT_REPO = "https://github.com/Bhuvisai22/Trend.git"
+        DOCKER_IMAGE = "saidoc540/trend-app"
+        GITHUB_CRED = credentials('github-token')
+        DOCKER_CRED = credentials('Dockerhub-token')
     }
 
     stages {
-
-        stage('Clone Repository') {
+        
+        stage('Checkout Code') {
             steps {
-                git(
-                    url: 'https://github.com/Bhuvisai22/Trend.git',
-                    branch: 'main',
-                    credentialsId: 'github-token'
-                )
+                git branch: 'main',
+                    credentialsId: 'github-token',
+                    url: "${GIT_REPO}"
             }
         }
 
         stage('Build Docker Image') {
             steps {
                 bat """
-                docker build -t %DOCKER_REPO%:latest .
+                docker build -t %DOCKER_IMAGE%:latest .
+                docker tag %DOCKER_IMAGE%:latest %DOCKER_IMAGE%:${BUILD_NUMBER}
                 """
             }
         }
@@ -35,10 +35,11 @@ pipeline {
             }
         }
 
-        stage('Push to DockerHub') {
+        stage('Push Docker Image') {
             steps {
                 bat """
-                docker push %DOCKER_REPO%:latest
+                docker push %DOCKER_IMAGE%:latest
+                docker push %DOCKER_IMAGE%:${BUILD_NUMBER}
                 """
             }
         }
