@@ -1,48 +1,79 @@
 pipeline {
-    agent any
+    agent { label 'linux' }
 
     environment {
-        // Git
-        GIT_REPO = "https://github.com/Bhuvisai22/Trend.git"
-
-        // Docker
-        DOCKER_IMAGE = "saidoc540/trend-app"
-        DOCKER_CRED = credentials('saidoc540')
-
-        // AWS (optional for EKS deployment)
-        AWS_ACCESS_KEY_ID     = credentials('aws-access-key')
-        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-key')
+        GITHUB_REPO = "https://github.com/Bhuvisai22/Trend.git"
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')   // ← Jenkins Credentials ID
+        DOCKERHUB_USERNAME = "saidoc540"                         // ← Your DockerHub Username
+        IMAGE_NAME = "trend-app"                                 // image name
+        AWS_DEFAULT_REGION = "ap-south-1"                        // change if needed
     }
 
     stages {
 
         stage('Checkout Code') {
             steps {
-                git branch: 'main',
-                    credentialsId: 'Github',
-                    url: "${GIT_REPO}"
+                echo "Cloning GitHub repository..."
+                git branch: 'main', url: "${GITHUB_REPO}"
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                bat """
-                docker build -t %DOCKER_IMAGE%:latest .
-                docker tag %DOCKER_IMAGE%:latest %DOCKER_IMAGE%:${BUILD_NUMBER}
-                """
+                script {
+                    echo "Building Docker image..."
+                    sh """
+                    docker build -t ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest .
+                    """
+                }
             }
         }
 
-        stage('Docker Login') {
+        stage('DockerHub Login') {
             steps {
-                bat """
-                echo %DOCKER_CRED_PSW% | docker login -u %DOCKER_CRED_USR% --password-stdin
-                """
+                script {
+                    sh """
+                    echo "${DOCKERHUB_CREDENTIALS_PSW}" | docker login -u "${DOCKERHUB_CREDENTIALS_USR}" --password-stdin
+                    """
+                }
             }
         }
 
-        stage('Push Docker Image to DockerHub') {
+        stage('Push Image to DockerHub') {
             steps {
-                bat """
-                docker push %DOCKER_IMAGE%:latest
-                docker pu
+                script {
+                    echo "Pushing Docker image to DockerHub..."
+                    sh """
+                    docker push ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest
+                    """
+                }
+            }
+        }
+
+        stage('Deploy to EKS') {
+            steps {
+                script {
+                    echo "Deploying to AWS EKS..."
+                    
+                    sh """
+                    aws eks update-kubeconfig --name trend-cluster --region ${AWS_DEFAULT_REGION}
+
+                    kubectl set image deployment/trend-deployment trend-container=${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest
+
+                    kubectl rollout status deployment/trend-deployment
+                    """
+                }
+            }
+        }
+
+    }
+
+    post {
+        success {
+            echo "Pipeline executed successfully!"
+        }
+        failure {
+            echo "Pipeline failed ❌"
+        }
+    }
+}
