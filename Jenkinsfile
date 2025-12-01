@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     environment {
-        GITHUB_CRED   = credentials('github-token')        // GitHub PAT
-        DOCKER_CRED   = credentials('Dockerhub-token')     // DockerHub Token
-        DOCKER_REPO   = "saidoc540/trend"                  // Change if needed
+        GITHUB_CRED   = credentials('github-token')        
+        DOCKER_CRED   = credentials('Dockerhub-token')      
+        DOCKER_REPO   = "saidoc540/trend"                  
     }
 
     stages {
@@ -21,24 +21,24 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                sh """
-                docker build -t ${DOCKER_REPO}:latest .
+                bat """
+                docker build -t %DOCKER_REPO%:latest .
                 """
             }
         }
 
         stage('Docker Login') {
             steps {
-                sh """
-                echo ${DOCKER_CRED_PSW} | docker login -u ${DOCKER_CRED_USR} --password-stdin
+                bat """
+                echo %DOCKER_CRED_PSW% | docker login -u %DOCKER_CRED_USR% --password-stdin
                 """
             }
         }
 
         stage('Push to DockerHub') {
             steps {
-                sh """
-                docker push ${DOCKER_REPO}:latest
+                bat """
+                docker push %DOCKER_REPO%:latest
                 """
             }
         }
