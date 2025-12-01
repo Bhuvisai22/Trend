@@ -2,54 +2,45 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_CREDS = credentials('saidoc540')
-        AWS_ACCESS_KEY_ID = credentials('aws-access-key')
-        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-key')
-        IMAGE_TAG = "${DOCKERHUB_CREDS_USR}/trend-app:${BUILD_NUMBER}"
+        GITHUB_CRED   = credentials('github-token')        // GitHub PAT
+        DOCKER_CRED   = credentials('Dockerhub-token')     // DockerHub Token
+        DOCKER_REPO   = "saidoc540/trend"                  // Change if needed
     }
 
     stages {
-               
 
-              
-        stage('Build & Push Docker Image') {
+        stage('Clone Repository') {
             steps {
-                script {
-                    docker.build(IMAGE_TAG, ".")
-                    docker.withRegistry('https://registry.hub.docker.com', 'saidoc540') {
-                        docker.image(IMAGE_TAG).push()
-                    }
-                }
+                git(
+                    url: 'https://github.com/Bhuvisai22/Trend.git',
+                    branch: 'main',
+                    credentialsId: 'github-token'
+                )
             }
         }
 
-        stage('Deploy to EKS') {
+        stage('Build Docker Image') {
             steps {
-                sh '''
-                    # Install kubectl
-                       curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-                    # Configure AWS CLI & kubectl
-                    aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
-                    aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
-                    aws configure set region ap-south-1
-                    aws eks update-kubeconfig --name trend-app-eks --region ap-south-1
-
-                    # Update image in deployment
-                    kubectl set image deployment/trend-app nginx='$IMAGE_TAG'
-
-                    # Wait for rollout
-                    kubectl rollout status deployment/trend-app --timeout=120s
-                '''
+                sh """
+                docker build -t ${DOCKER_REPO}:latest .
+                """
             }
         }
-    }
 
-    post {
-        success {
-            echo "✅ Deployment successful! App is live."
+        stage('Docker Login') {
+            steps {
+                sh """
+                echo ${DOCKER_CRED_PSW} | docker login -u ${DOCKER_CRED_USR} --password-stdin
+                """
+            }
         }
-        failure {
-            echo "❌ Pipeline failed."
+
+        stage('Push to DockerHub') {
+            steps {
+                sh """
+                docker push ${DOCKER_REPO}:latest
+                """
+            }
         }
     }
 }
