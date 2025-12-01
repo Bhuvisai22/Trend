@@ -1,33 +1,61 @@
 pipeline {
     agent any
+
     environment {
-        DOCKER_IMAGE = "saidoc540/trend-app:latest"
-        KUBECONFIG = "/home/ec2-user/.kube/config"
+        DOCKERHUB_USER = "saidoc540"
+        GIT_USER = "Bhuvisai22"
+        IMAGE_NAME = "trend-app"   // change if needed
     }
+
     stages {
-        stage('Checkout') {
+
+        stage('Checkout Code') {
             steps {
-                git 'https://github.com/Bhuvisai22/Trend.git'
+                git branch: 'main',
+                    credentialsId: 'github-creds',
+                    url: "https://github.com/${Bhuvisai22}/${trend-app}.git"
             }
         }
+
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t $DOCKER_IMAGE .'
-            }
-        }
-        stage('Push to DockerHub') {
-            steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
-                    sh 'echo $PASS | docker login -u $USER --password-stdin'
-                    sh 'docker push $DOCKER_IMAGE'
+                script {
+                    dockerImage = docker.build("${DOCKERHUB_USER}/${IMAGE_NAME}:${env.BUILD_NUMBER}")
                 }
             }
         }
-        stage('Deploy to EKS') {
+
+        stage('Login to Docker Hub') {
             steps {
-                sh 'kubectl apply -f deployment.yaml'
-                sh 'kubectl apply -f service.yaml'
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                    sh "echo $PASSWORD | docker login -u $USERNAME --password-stdin"
+                }
             }
+        }
+
+        stage('Push Image to Docker Hub') {
+            steps {
+                script {
+                    dockerImage.push()
+                }
+            }
+        }
+
+        stage('Deploy Container') {
+            steps {
+                sh """
+                    docker rm -f ${IMAGE_NAME} || true
+                    docker pull ${DOCKERHUB_USER}/${IMAGE_NAME}:${BUILD_NUMBER}
+                    docker run -d --name ${IMAGE_NAME} -p 8080:8080 ${DOCKERHUB_USER}/${IMAGE_NAME}:${BUILD_NUMBER}
+                """
+            }
+        }
+    }
+
+    post {
+        always {
+            sh 'docker logout'
+            cleanWs()
         }
     }
 }
