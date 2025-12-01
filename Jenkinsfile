@@ -2,18 +2,24 @@ pipeline {
     agent any
 
     environment {
+        // Git
         GIT_REPO = "https://github.com/Bhuvisai22/Trend.git"
+
+        // Docker
         DOCKER_IMAGE = "saidoc540/trend-app"
-        GITHUB_CRED = credentials('github-token')
-        DOCKER_CRED = credentials('Dockerhub-token')
+        DOCKER_CRED = credentials('saidoc540')
+
+        // AWS (optional for EKS deployment)
+        AWS_ACCESS_KEY_ID     = credentials('aws-access-key')
+        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-key')
     }
 
     stages {
-        
+
         stage('Checkout Code') {
             steps {
                 git branch: 'main',
-                    credentialsId: 'github-token',
+                    credentialsId: 'Github',
                     url: "${GIT_REPO}"
             }
         }
@@ -35,13 +41,8 @@ pipeline {
             }
         }
 
-        stage('Push Docker Image') {
+        stage('Push Docker Image to DockerHub') {
             steps {
                 bat """
                 docker push %DOCKER_IMAGE%:latest
-                docker push %DOCKER_IMAGE%:${BUILD_NUMBER}
-                """
-            }
-        }
-    }
-}
+                docker pu
