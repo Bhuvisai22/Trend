@@ -2,49 +2,64 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "saidoc540/trend-app"
-        DOCKERHUB_CREDENTIALS = "dockerhub-cred"
+        REPO_URL = "https://github.com/Bhuvisai22/Trend.git"
+        BRANCH = "main"
+        IMAGE_NAME = "yourdockerhubusername/trend-app"
     }
 
     stages {
 
-        stage('Clone Repository') {
+        stage('Checkout Code') {
             steps {
-                script {
-                    BRANCH = env.GIT_BRANCH ?: "main"
-                    echo "Building branch: ${BRANCH}"
-                    git branch: BRANCH, url: 'https://github.com/Bhuvisai22/Trend.git'
-                }
+                echo "Cloning branch: ${BRANCH}"
+                git branch: BRANCH, url: REPO_URL
             }
         }
 
         stage('Set Image Tag') {
             steps {
                 script {
-                    COMMIT_HASH = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
-                    IMAGE_TAG = "${BRANCH}-${COMMIT_HASH}"
+                    IMAGE_TAG = "${env.BUILD_NUMBER}"
+                    echo "Image tag: ${IMAGE_TAG}"
                 }
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+                script {
+                    sh """
+                    docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+                    """
+                }
             }
         }
 
         stage('Docker Login') {
             steps {
-                withCredentials([usernamePassword(credentialsId: "${DOCKERHUB_CREDENTIALS}", usernameVariable: 'USER', passwordVariable: 'PASS')]) {
-                    sh 'echo $PASS | docker login -u $USER --password-stdin'
+                script {
+                    sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin'
                 }
             }
         }
 
         stage('Push Docker Image') {
             steps {
-                sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
+                script {
+                    sh """
+                    docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                    """
+                }
             }
+        }
+    }
+
+    post {
+        success {
+            echo "Build completed successfully!"
+        }
+        failure {
+            echo "Build failed!"
         }
     }
 }
