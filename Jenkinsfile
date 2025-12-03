@@ -7,17 +7,29 @@ pipeline {
     }
 
     stages {
+
         stage('Clone Repository') {
             steps {
-                git branch: "${env.BRANCH_NAME}", url: 'https://github.com/Bhuvisai22/Trend.git'
+                script {
+                    BRANCH = env.GIT_BRANCH ?: "main"
+                    echo "Building branch: ${BRANCH}"
+                    git branch: BRANCH, url: 'https://github.com/Bhuvisai22/Trend.git'
+                }
+            }
+        }
+
+        stage('Set Image Tag') {
+            steps {
+                script {
+                    COMMIT_HASH = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
+                    IMAGE_TAG = "${BRANCH}-${COMMIT_HASH}"
+                }
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                script {
-                    sh "docker build -t ${IMAGE_NAME}:${env.BRANCH_NAME} ."
-                }
+                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
             }
         }
 
@@ -31,27 +43,7 @@ pipeline {
 
         stage('Push Docker Image') {
             steps {
-                script {
-                    sh "docker push ${IMAGE_NAME}:${env.BRANCH_NAME}"
-                }
-            }
-        }
-
-        stage('Deploy on EC2') {
-            when {
-                branch 'master'
-            }
-            steps {
-                script {
-                    // Replace with your EC2 SSH details
-                    sh """
-                    ssh -o StrictHostKeyChecking=no ubuntu@<EC2_PUBLIC_IP> '
-                      docker stop trend-app || true &&
-                      docker rm trend-app || true &&
-                      docker run -d -p 80:80 --name trend-app ${IMAGE_NAME}:master
-                    '
-                    """
-                }
+                sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
             }
         }
     }
