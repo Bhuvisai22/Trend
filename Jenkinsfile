@@ -4,7 +4,7 @@ pipeline {
     environment {
         REPO_URL = "https://github.com/Bhuvisai22/Trend.git"
         BRANCH = "main"
-        IMAGE_NAME = "yourdockerhubusername/trend-app"
+        IMAGE_NAME = "saidoc540/trend-app"
     }
 
     stages {
@@ -19,7 +19,8 @@ pipeline {
         stage('Set Image Tag') {
             steps {
                 script {
-                    IMAGE_TAG = "${env.BUILD_NUMBER}"
+                    def IMAGE_TAG = "${env.BUILD_NUMBER}"
+                    env.IMAGE_TAG = IMAGE_TAG
                     echo "Image tag: ${IMAGE_TAG}"
                 }
             }
@@ -37,8 +38,14 @@ pipeline {
 
         stage('Docker Login') {
             steps {
-                script {
-                    sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin'
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USERNAME',
+                    passwordVariable: 'DOCKER_PASSWORD'
+                )]) {
+                    sh """
+                    echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
+                    """
                 }
             }
         }
