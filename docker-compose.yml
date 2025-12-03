@@ -1,8 +1,11 @@
-version: '3.8'
+version: "3.8"
 
 services:
-  react-app:
-    build: .
+  trend-app:
+    image: ${IMAGE_NAME:-saidoc540/trend-app-dev}:${IMAGE_TAG:-latest}
+    container_name: trend-app
+    restart: always
     ports:
       - "80:80"
-    restart: always
+    # If you want to build locally instead of pull from Docker Hub, use:
+    # build: .
