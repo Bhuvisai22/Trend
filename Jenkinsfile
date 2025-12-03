@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_CREDENTIALS = 'dockerhub'
+        DOCKERHUB_CREDENTIALS = 'dockerhub-cred'
         IMAGE_NAME = "saidoc540/trend-app"
         TAG = "latest"     // change to your tag
     }
