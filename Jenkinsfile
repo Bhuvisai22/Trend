@@ -2,72 +2,40 @@ pipeline {
     agent any
 
     environment {
-        APP_NAME       = 'trend-app'
-        DOCKERHUB_USER = 'your-dockerhub-username'  // ← UPDATE THIS
-        IMAGE_TAG      = "${env.BRANCH_NAME}-${env.BUILD_NUMBER}"
-        KUBECONFIG     = credentials('kubeconfig-eks')  // Jenkins credential ID
+        DOCKERHUB_USER = "saidoc540"
+        IMAGE_NAME = "trend-app"
+        IMAGE_TAG = "latest"
+        GIT_REPO = "https://github.com/Bhuvisai22/Trend.git"
     }
 
     stages {
-        stage('Checkout') {
+
+        stage("Checkout Code") {
             steps {
-                checkout scm
+                git branch: 'main', url: "${env.GIT_REPO}"
             }
         }
 
-        stage('Build Docker Image') {
+        stage("Build Docker Image") {
             steps {
                 script {
-                    def image = "${env.DOCKERHUB_USER}/${env.APP_NAME}:${env.IMAGE_TAG}"
-                    sh "docker build -t ${image} ."
+                    sh "docker build -t ${DOCKERHUB_USER}/${IMAGE_NAME}:${IMAGE_TAG} ."
                 }
             }
         }
 
-        stage('Push to DockerHub') {
+        stage("Login to DockerHub") {
             steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'dockerhub-creds',
-                        usernameVariable: 'DOCKER_USER',
-                        passwordVariable: 'DOCKER_PASS'
-                    )
-                ]) {
-                    script {
-                        def image = "${env.DOCKERHUB_USER}/${env.APP_NAME}:${env.IMAGE_TAG}"
-                        sh """
-                            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                            docker push ${image}
-                        """
+                script {
+                    withCredentials([usernamePassword(
+                        credentialsId: 'dockerhub-cred',
+                        usernameVariable: 'USERNAME',
+                        passwordVariable: 'PASSWORD'
+                    )]) {
+                        sh "echo $PASSWORD | docker login -u $USERNAME --password-stdin"
                     }
                 }
             }
         }
 
-        stage('Deploy to EKS') {
-            steps {
-                withEnv(["KUBECONFIG=${env.WORKSPACE}/kubeconfig"]) {
-                    sh "mkdir -p ~/.kube"
-                    sh "echo '${env.KUBECONFIG}' > ~/.kube/config"
-                    sh "chmod 600 ~/.kube/config"
-
-                    // Example: update deployment image
-                    sh """
-                        kubectl set image deployment/${env.APP_NAME} \
-                        ${env.APP_NAME}=${env.DOCKERHUB_USER}/${env.APP_NAME}:${env.IMAGE_TAG} \
-                        --namespace default
-                    """
-                }
-            }
-        }
-    }
-
-    post {
-        success {
-            echo "✅ CI/CD pipeline completed successfully!"
-        }
-        failure {
-            echo "❌ Pipeline failed. Check logs."
-        }
-    }
-}
+        stage("Push
