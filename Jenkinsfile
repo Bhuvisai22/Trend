@@ -3,13 +3,13 @@ pipeline {
 
     environment {
         IMAGE_NAME = "saidoc540/trend-app"
-        TAG = "latest"                     // you can change this
-        DOCKERHUB_CREDENTIALS = "dockerhub-cred"   // Jenkins credential ID
+        TAG = "latest"                          // you can change this
+        DOCKERHUB_CREDENTIALS = "dockerhub-cred" // Jenkins credential ID
 
         // EC2 details
         EC2_HOST = "13.200.200.134"
         EC2_USER = "ubuntu"
-        SSH_CREDENTIALS = "ec2-ssh-key"    // Jenkins SSH credential ID
+        SSH_CREDENTIALS = "ec2-ssh-key"         // Jenkins SSH credential ID
     }
 
     stages {
@@ -33,14 +33,14 @@ pipeline {
         stage('Login to DockerHub') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: "${DOCKERHUB_CREDENTIALS}",
+                    credentialsId: DOCKERHUB_CREDENTIALS,
                     usernameVariable: 'USER',
                     passwordVariable: 'PASS'
                 )]) {
-                    sh """
+                    sh '''
                       echo "Logging into DockerHub..."
                       echo "$PASS" | docker login -u "$USER" --password-stdin
-                    """
+                    '''
                 }
             }
         }
@@ -58,7 +58,7 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 script {
-                    sshagent (credentials: [SSH_CREDENTIALS]) {
+                    sshagent(credentials: [env.SSH_CREDENTIALS]) {
                         sh """
                           ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} '
                             set -e
