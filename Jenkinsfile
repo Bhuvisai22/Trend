@@ -2,71 +2,40 @@ pipeline {
     agent any
 
     environment {
-        REPO_URL = "https://github.com/Bhuvisai22/Trend.git"
-        BRANCH = "main"
-        IMAGE_NAME = "saidoc540/trend-app"
+        DOCKERHUB_USER = "saidoc540"
+        IMAGE_NAME = "trend-app"
+        IMAGE_TAG = "latest"
+        GIT_REPO = "https://github.com/Bhuvisai22/Trend.git"
     }
 
     stages {
 
-        stage('Checkout Code') {
+        stage("Checkout Code") {
             steps {
-                echo "Cloning branch: ${BRANCH}"
-                git branch: BRANCH, url: REPO_URL
+                git branch: 'main', url: "${env.GIT_REPO}"
             }
         }
 
-        stage('Set Image Tag') {
-            steps {
-                script {
-                    def IMAGE_TAG = "${env.BUILD_NUMBER}"
-                    env.IMAGE_TAG = IMAGE_TAG
-                    echo "Image tag: ${IMAGE_TAG}"
-                }
-            }
-        }
-
-        stage('Build Docker Image') {
+        stage("Build Docker Image") {
             steps {
                 script {
-                    sh """
-                    docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
-                    """
+                    sh "docker build -t ${DOCKERHUB_USER}/${IMAGE_NAME}:${IMAGE_TAG} ."
                 }
             }
         }
 
-        stage('Docker Login') {
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-creds',
-                    usernameVariable: 'DOCKER_USERNAME',
-                    passwordVariable: 'DOCKER_PASSWORD'
-                )]) {
-                    sh """
-                    echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
-                    """
-                }
-            }
-        }
-
-        stage('Push Docker Image') {
+        stage("Login to DockerHub") {
             steps {
                 script {
-                    sh """
-                    docker push ${IMAGE_NAME}:${IMAGE_TAG}
-                    """
+                    withCredentials([usernamePassword(
+                        credentialsId: 'dockerhub-cred',
+                        usernameVariable: 'USERNAME',
+                        passwordVariable: 'PASSWORD'
+                    )]) {
+                        sh "echo $PASSWORD | docker login -u $USERNAME --password-stdin"
+                    }
                 }
             }
         }
-    }
 
-    post {
-        success {
-            echo "Build completed successfully!"
-        }
-        failure {
-            echo "Build failed!"
-        }
-    }
-}
+        stage("Push
