@@ -1,11 +1,10 @@
-
 pipeline {
     agent any
 
     environment {
-        DOCKERHUB_CREDENTIALS = 'dockerhub'
         IMAGE_NAME = "saidoc540/trend-app"
-        TAG = "latest"     // change to your tag
+        TAG = "latest"   // you can change this
+        DOCKERHUB_CREDENTIALS = "dockerhub-cred"   // Jenkins credential ID
     }
 
     stages {
@@ -28,10 +27,10 @@ pipeline {
 
         stage('Login to DockerHub') {
             steps {
-                script {
+                withCredentials([usernamePassword(credentialsId: "${DOCKERHUB_CREDENTIALS}", usernameVariable: 'USER', passwordVariable: 'PASS')]) {
                     sh """
                     echo "Logging into DockerHub..."
-                    docker login -u ${params.DOCKER_USER} -p ${params.DOCKER_PASS}
+                    echo "$PASS" | docker login -u "$USER" --password-stdin
                     """
                 }
             }
