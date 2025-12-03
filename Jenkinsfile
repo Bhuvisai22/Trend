@@ -1,41 +1,50 @@
+
 pipeline {
     agent any
 
     environment {
-        DOCKERHUB_USER = "saidoc540"
-        IMAGE_NAME = "trend-app"
-        IMAGE_TAG = "latest"
-        GIT_REPO = "https://github.com/Bhuvisai22/Trend.git"
+        DOCKERHUB_CREDENTIALS = 'dockerhub'
+        IMAGE_NAME = "saidoc540/trend-app"
+        TAG = "latest"     // change to your tag
     }
 
     stages {
 
-        stage("Checkout Code") {
+        stage('Clone Repository') {
             steps {
-                git branch: 'main', url: "${env.GIT_REPO}"
+                git branch: 'main', url: 'https://github.com/Bhuvisai22/Trend.git'
             }
         }
 
-        stage("Build Docker Image") {
+        stage('Build Docker Image') {
             steps {
                 script {
-                    sh "docker build -t ${DOCKERHUB_USER}/${IMAGE_NAME}:${IMAGE_TAG} ."
+                    sh """
+                    docker build -t ${IMAGE_NAME}:${TAG} .
+                    """
                 }
             }
         }
 
-        stage("Login to DockerHub") {
+        stage('Login to DockerHub') {
             steps {
                 script {
-                    withCredentials([usernamePassword(
-                        credentialsId: 'dockerhub-cred',
-                        usernameVariable: 'USERNAME',
-                        passwordVariable: 'PASSWORD'
-                    )]) {
-                        sh "echo $PASSWORD | docker login -u $USERNAME --password-stdin"
-                    }
+                    sh """
+                    echo "Logging into DockerHub..."
+                    docker login -u ${params.DOCKER_USER} -p ${params.DOCKER_PASS}
+                    """
                 }
             }
         }
 
-        stage("Push
+        stage('Push to DockerHub') {
+            steps {
+                script {
+                    sh """
+                    docker push ${IMAGE_NAME}:${TAG}
+                    """
+                }
+            }
+        }
+    }
+}
